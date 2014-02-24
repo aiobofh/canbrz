@@ -41,8 +41,10 @@ while not done:
             done = True
     screen.fill(BLACK)
 
-    water_value = 140 if water_value > 140
-    water_value = 40 if water_value < 40
+    if water_value > 140:
+        water_value = 140
+    if water_value < 40:
+        water_value = 40
 
     water_blink = (water_value > 120)
 
