@@ -11,6 +11,7 @@ import sys
 
 SAMPLE=10
 REFRESH=50
+INTRO_LENGTH=5
 
 class OBD:
     def __init__(self, tty_name):
@@ -58,8 +59,9 @@ class CircularGauge:
         self.current_value = min_val
         self.old_current_value = min_val
         self.gauge_range = self.max_val - self.min_val
+        self.first = True
 
-    def set(self, value):
+    def set(self, value, samples):
         self.old_value = self.value
         self.value = value;
 
@@ -72,9 +74,16 @@ class CircularGauge:
         self.delta = self.value - self.old_value
 
         if self.delta != 0:
-            self.offset = 1.0 * abs(1.0 * self.delta / (1.0 * SAMPLE))
+            self.offset = 1.0 * abs(1.0 * self.delta / (1.0 * samples))
+            print self.offset
         else:
             self.offset = 0
+
+    def get_max(self):
+        return self.max_val
+
+    def get_min(self):
+        return self.min_val
 
     def get(self):
         return self.value
@@ -114,9 +123,9 @@ class CircularGauge:
 
         # If temperature goes above 120 degrees blink the warning lamp.
         warn = (self.current_value > self.warn_val)
-
+        change = (self.old_current_value != self.current_value)
         self._calc()
-        if self.old_current_value != self.current_value:
+        if (change == True) or (self.first == True):
             rad = self._get_rad()
 
             # Rotate all points making up the pointer
@@ -127,7 +136,7 @@ class CircularGauge:
             self.x3 = math.cos(rad - 0.03) * self.inner_needle_radius
             self.y3 = math.sin(rad - 0.03) * self.inner_needle_radius
 
-        if (self.old_current_value != self.current_value) or (warn == True):
+        if (change == True) or (warn == True) or (self.first == True):
 
             if warn == True and self.ticks < 5:
                 screen.blit(self.warning, [x, y])
@@ -147,6 +156,10 @@ class CircularGauge:
 
 if len(sys.argv) != 2:
     print "canbrz <serial tty>"
+    print ""
+    print "To simulate run 'obdsim -g Random -s 42 -g gui_fltk' and give the"
+    print "pts-device outputed from obdsim to the canbrz"
+    print ""
     exit(1)
 
 pygame.init()
@@ -176,8 +189,9 @@ obd = OBD(sys.argv[1])
 
 # Update graphics
 screen.fill((0,0,0))
-
+samples = 0
 ticks = 0
+samples = 0
 while not done:
 #    done = True
     # Handle various ways to quit the program.
@@ -192,8 +206,15 @@ while not done:
             pygame.display.toggle_fullscreen()
 
     if ticks == 0:
-        val = obd.engine_coolant_temperature()
-        water_gauge.set(val)
+        if samples > INTRO_LENGTH * 4:
+            val = obd.engine_coolant_temperature()
+            water_gauge.set(val, SAMPLE)
+        elif samples == 0:
+            water_gauge.set(water_gauge.get_min(), SAMPLE * 5)
+        elif samples == INTRO_LENGTH:
+            water_gauge.set(water_gauge.get_max(), SAMPLE * 5)
+        elif samples == INTRO_LENGTH * 2:
+            water_gauge.set(water_gauge.get_min(), SAMPLE * 5)
 
     water_gauge.draw(screen,0,0)
     # Swap buffer
@@ -204,5 +225,6 @@ while not done:
     ticks += 1
     if ticks > SAMPLE:
         ticks = 0
+        samples += 1
 
 pygame.quit()
