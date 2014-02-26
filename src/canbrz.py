@@ -8,6 +8,7 @@ import serial
 import pygame
 import math
 import sys
+from random import randint
 
 SAMPLE=10
 REFRESH=50
@@ -29,6 +30,14 @@ class OBD:
         retval = self.dongle.readline() # The value
         (foo,bar,val) = retval.split(" ")
         return int(val, 16)-40
+
+class DemoOBD:
+    def __init__(self):
+        self.value = 70.0
+
+    def engine_coolant_temperature(self):
+        self.value += randint(-1,1) / 5.0
+        return self.value
 
 class CircularGauge:
     def __init__(self,
@@ -75,7 +84,6 @@ class CircularGauge:
 
         if self.delta != 0:
             self.offset = 1.0 * abs(1.0 * self.delta / (1.0 * samples))
-            print self.offset
         else:
             self.offset = 0
 
@@ -160,6 +168,8 @@ if len(sys.argv) != 2:
     print "To simulate run 'obdsim -g Random -s 42 -g gui_fltk' and give the"
     print "pts-device outputed from obdsim to the canbrz"
     print ""
+    print "If you just wnat to check out the program enter 'demo' as serial"
+    print "tty and you don't have to set-up a serial interface."
     exit(1)
 
 pygame.init()
@@ -185,7 +195,10 @@ done = False
 clock = pygame.time.Clock()
 
 # "/dev/pts/21"
-obd = OBD(sys.argv[1])
+if sys.argv[1] == "demo":
+    obd = DemoOBD()
+else:
+    obd = OBD(sys.argv[1])
 
 # Update graphics
 screen.fill((0,0,0))
@@ -206,7 +219,7 @@ while not done:
             pygame.display.toggle_fullscreen()
 
     if ticks == 0:
-        if samples > INTRO_LENGTH * 4:
+        if samples > INTRO_LENGTH * 3:
             val = obd.engine_coolant_temperature()
             water_gauge.set(val, SAMPLE)
         elif samples == 0:
