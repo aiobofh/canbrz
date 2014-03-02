@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 #
-# This is pretty much hardcoded stuff just to demonstrate how this gauge will
-# be coded.
+# Simple OBD-II client for the ELM327 bluetooth interface to show oil,
+# temperature, water temperature, fuel presure and air flow to the
+# engine. It will also contain a gear shift inidcator and a krellm-like
+# diagram over throttle control.
 #
 
 import serial
@@ -31,13 +33,40 @@ class OBD:
         (foo,bar,val) = retval.split(" ")
         return int(val, 16)-40
 
+    def oil_temperature(self):
+        self.dongle.write("21 01\n")
+        retval = self.dongle.readline() # Echo
+        retval = self.dongle.readline() # New Line
+        retval = self.dongle.readline() # Something
+        retval = self.dongle.readline() # The value
+        (foo,bar,val) = retval.split(" ")
+        return int(val, 16)-40
+
+    def fuel_pressure(self):
+        self.dongle.write("01 0A\n")
+        retval = self.dongle.readline() # Echo
+        retval = self.dongle.readline() # New Line
+        retval = self.dongle.readline() # Something
+        retval = self.dongle.readline() # The value
+        (foo,bar,val) = retval.split(" ")
+        return int(val, 16)*3.0 / 100.0
+
 class DemoOBD:
     def __init__(self):
         self.value = 70.0
+        self.fuel_pressure_value = 1.5
 
     def engine_coolant_temperature(self):
         self.value += randint(-1,1) / 5.0
         return self.value
+
+    def oil_temperature(self):
+        self.value += randint(-1,1) / 5.0
+        return self.value
+
+    def fuel_pressure(self):
+        self.fuel_pressure_value += randint(-1,1) / 50.0
+        return self.fuel_pressure_value
 
 class CircularGauge:
     def __init__(self,
@@ -174,22 +203,42 @@ if len(sys.argv) != 2:
 
 pygame.init()
 # Drawing area
-size = (800,600)
+size = (800,480)
 screen = pygame.display.set_mode(size)
 
 pygame.display.set_caption("CanBRZ")
 
 
-water_gauge = CircularGauge(normal_image="../graphics/meter.png",
-                            warning_image="../graphics/meter_warning.png",
-                            inner_needle_radius=50,
-                            outer_needle_radius=190,
-                            min_val=40,
-                            max_val=140,
-                            warn_val=120,
-                            min_val_degrees=269,
-                            max_val_degrees=0,
-                            needle_color=(200,0,0))
+water_temperature_gauge = CircularGauge(normal_image="../graphics/water_normal_small.png",
+                                        warning_image="../graphics/water_warning_small.png",
+                                        inner_needle_radius=22,
+                                        outer_needle_radius=90,
+                                        min_val=40,
+                                        max_val=140,
+                                        warn_val=120,
+                                        min_val_degrees=269,
+                                        max_val_degrees=0,
+                                        needle_color=(200,0,0))
+oil_temperature_gauge = CircularGauge(normal_image="../graphics/oil_normal_big.png",
+                                      warning_image="../graphics/oil_warning_big.png",
+                                      inner_needle_radius=45,
+                                      outer_needle_radius=185,
+                                      min_val=40,
+                                      max_val=140,
+                                      warn_val=120,
+                                      min_val_degrees=269,
+                                      max_val_degrees=0,
+                                      needle_color=(200,0,0))
+fuel_pressure_gauge = CircularGauge(normal_image="../graphics/fuel_pressure_normal_small.png",
+                                    warning_image="../graphics/fuel_pressure_warning_small.png",
+                                    inner_needle_radius=22,
+                                    outer_needle_radius=90,
+                                    min_val=0,
+                                    max_val=5,
+                                    warn_val=1,
+                                    min_val_degrees=269,
+                                    max_val_degrees=0,
+                                    needle_color=(200,0,0))
 
 done = False
 clock = pygame.time.Clock()
@@ -221,15 +270,28 @@ while not done:
     if ticks == 0:
         if samples > INTRO_LENGTH * 3:
             val = obd.engine_coolant_temperature()
-            water_gauge.set(val, SAMPLE)
+            water_temperature_gauge.set(val, SAMPLE)
+            val = obd.oil_temperature()
+            oil_temperature_gauge.set(val, SAMPLE)
+            val = obd.fuel_pressure()
+            fuel_pressure_gauge.set(val, SAMPLE)
         elif samples == 0:
-            water_gauge.set(water_gauge.get_min(), SAMPLE * 5)
+            water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
+            fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
         elif samples == INTRO_LENGTH:
-            water_gauge.set(water_gauge.get_max(), SAMPLE * 5)
+            water_temperature_gauge.set(water_temperature_gauge.get_max(), SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_max(), SAMPLE * 5)
+            fuel_pressure_gauge.set(fuel_pressure_gauge.get_max(), SAMPLE * 5)
         elif samples == INTRO_LENGTH * 2:
-            water_gauge.set(water_gauge.get_min(), SAMPLE * 5)
+            water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
+            fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
 
-    water_gauge.draw(screen,0,0)
+    screen.fill((0,0,0))
+    water_temperature_gauge.draw(screen,400,0)
+    oil_temperature_gauge.draw(screen,0,0)
+    fuel_pressure_gauge.draw(screen,600,0)
     # Swap buffer
     pygame.display.flip()
 
