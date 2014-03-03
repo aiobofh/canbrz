@@ -51,6 +51,15 @@ class OBD:
         (foo,bar,val) = retval.split(" ")
         return int(val, 16)*3.0 / 100.0
 
+    def air_flow(self):
+        self.dongle.write("01 10\n")
+        retval = self.dongle.readline() # Echo
+        retval = self.dongle.readline() # New Line
+        retval = self.dongle.readline() # Something
+        retval = self.dongle.readline() # The value
+        (foo,val2,val1) = retval.split(" ")
+        return (int(val1, 16)*256 + int(val2, 16)) / 100.0
+
 class DemoOBD:
     def __init__(self):
         self.value = 70.0
@@ -67,6 +76,10 @@ class DemoOBD:
     def fuel_pressure(self):
         self.fuel_pressure_value += randint(-1,1) / 50.0
         return self.fuel_pressure_value
+
+    def air_flow(self):
+        self.value += randint(-1,1) / 2.0
+        return self.value
 
 class CircularGauge:
     def __init__(self,
@@ -239,6 +252,16 @@ fuel_pressure_gauge = CircularGauge(normal_image="../graphics/fuel_pressure_norm
                                     min_val_degrees=269,
                                     max_val_degrees=0,
                                     needle_color=(200,0,0))
+air_flow_gauge = CircularGauge(normal_image="../graphics/air_flow_normal_small.png",
+                               warning_image="../graphics/air_flow_normal_small.png",
+                               inner_needle_radius=22,
+                               outer_needle_radius=90,
+                               min_val=0,
+                               max_val=500,
+                               warn_val=1,
+                               min_val_degrees=269,
+                               max_val_degrees=0,
+                               needle_color=(200,0,0))
 
 done = False
 clock = pygame.time.Clock()
@@ -275,23 +298,29 @@ while not done:
             oil_temperature_gauge.set(val, SAMPLE)
             val = obd.fuel_pressure()
             fuel_pressure_gauge.set(val, SAMPLE)
+            val = obd.air_flow()
+            air_flow_gauge.set(val, SAMPLE)
         elif samples == 0:
             water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
             oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
+            air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
         elif samples == INTRO_LENGTH:
             water_temperature_gauge.set(water_temperature_gauge.get_max(), SAMPLE * 5)
             oil_temperature_gauge.set(oil_temperature_gauge.get_max(), SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_max(), SAMPLE * 5)
+            air_flow_gauge.set(air_flow_gauge.get_max(), SAMPLE * 5)
         elif samples == INTRO_LENGTH * 2:
             water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
             oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
+            air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
 
     screen.fill((0,0,0))
     water_temperature_gauge.draw(screen,400,0)
     oil_temperature_gauge.draw(screen,0,0)
     fuel_pressure_gauge.draw(screen,600,0)
+    air_flow_gauge.draw(screen,500,200)
     # Swap buffer
     pygame.display.flip()
 
