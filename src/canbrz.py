@@ -22,7 +22,8 @@ class OBD:
     def __init__(self, tty_name):
         self.dongle = serial.Serial()
         self.dongle.port = tty_name
-        self.dongle.timeout = 0.001
+        self.dongle.timeout = 0
+        self.dongle.writeTimeout = 0
         if not tty_name.startswith('/dev/pts'):
             printf("Setting baud-rate")
             self.dongle.baudrate = 38400
@@ -34,14 +35,20 @@ class OBD:
         self.dongle.close()
 
     def _send(self, string):
-        string_to_send = "%s \r" % string
+        self.dongle.flushInput()
+        self.dongle.flushOutput()
+        string_to_send = "%s \n" % string
         self.dongle.write(string_to_send)
+        self.dongle.flushInput()
+        self.dongle.flushOutput()
         retval = ''
         last = 'NO DATA'
         while (retval != '>' and retval != 'NO DATA'):
             if retval != string and retval != '':
                 last = retval
             retval = self.dongle.readline().rstrip() # Echo
+        self.dongle.flushInput()
+        self.dongle.flushOutput()
         return last
 
     def engine_coolant_temperature(self):
@@ -67,7 +74,6 @@ class OBD:
             print(s)
             value = int(s.split(" ")[2], 16)
         value = (value * 3.0) / 100.0
-        print("F: ", value)
         return value * 3.0 / 100.0
 
     def air_flow(self):
