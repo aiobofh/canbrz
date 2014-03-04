@@ -12,6 +12,8 @@ import serial
 import pygame
 import math
 import sys
+import threading
+import time
 from random import randint
 
 SAMPLE=10
@@ -290,6 +292,7 @@ air_flow_gauge = CircularGauge(normal_image="../graphics/air_flow_normal_small.p
                                max_val_degrees=0,
                                needle_color=(200,0,0))
 
+
 done = False
 clock = pygame.time.Clock()
 
@@ -304,48 +307,61 @@ screen.fill((0,0,0))
 samples = 0
 ticks = 0
 samples = 0
-while not done:
+
+def read_from_port():
+    while done == False:
+        if samples > INTRO_LENGTH * 3:
+            water_val = obd.engine_coolant_temperature()
+            oil_val = obd.oil_temperature()
+            fuel_val = obd.fuel_pressure()
+            air_val = obd.air_flow()
+            water_temperature_gauge.set(water_val, SAMPLE)
+            oil_temperature_gauge.set(oil_val, SAMPLE)
+            fuel_pressure_gauge.set(fuel_val, SAMPLE)
+            air_flow_gauge.set(air_val, SAMPLE)
+            time.sleep(0.5)
+
+thread = threading.Thread(target=read_from_port)
+
+while done == False:
 #    done = True
     # Handle various ways to quit the program.
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
+            time.sleep(3)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             done = True
+            time.sleep(3)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_q:
             done = True
+            time.sleep(3)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_f:
             pygame.display.toggle_fullscreen()
 
     if ticks == 0:
-        if samples > INTRO_LENGTH * 3:
-            # Low frequency samples
-            if samples % 8 == 0:
-                water_val = obd.engine_coolant_temperature()
-                water_temperature_gauge.set(water_val, SAMPLE)
-                oil_val = obd.oil_temperature()
-                oil_temperature_gauge.set(oil_val, SAMPLE)
-            # High frequency samples
-            fuel_val = obd.fuel_pressure()
-            fuel_pressure_gauge.set(fuel_val, SAMPLE)
-            air_val = obd.air_flow()
-            air_flow_gauge.set(air_val, SAMPLE)
-#            print("Water: %d, Oil: %d, Fuel: %d Bar, Air Flow: %d CC/Min" % water_val, oil_val, fuel_val, air_val)
-        elif samples == 0:
-            water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
+        if samples == 0:
+            water_temperature_gauge.set(water_temperature_gauge.get_min(),
+                                        SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
+                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
         elif samples == INTRO_LENGTH:
-            water_temperature_gauge.set(water_temperature_gauge.get_max(), SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_max(), SAMPLE * 5)
+            water_temperature_gauge.set(water_temperature_gauge.get_max(),
+                                        SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_max(),
+                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_max(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_max(), SAMPLE * 5)
         elif samples == INTRO_LENGTH * 2:
-            water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
+            water_temperature_gauge.set(water_temperature_gauge.get_min(),
+                                        SAMPLE * 5)
+            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
+                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
+            thread.start()
 
     screen.fill((0,0,0))
     water_temperature_gauge.draw(screen,400,0)
