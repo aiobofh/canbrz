@@ -185,12 +185,15 @@ class CircularGauge:
         rad = ((3.14 * 2) - (max_rad - min_rad)) * value - min_rad
         return rad
 
-    def draw(self, screen, x, y):
+    def draw(self, screen, x, y, invert_warning=False):
         w = self.normal.get_width()
         h = self.normal.get_height()
 
         # If temperature goes above 120 degrees blink the warning lamp.
-        warn = (self.current_value > self.warn_val)
+        if invert_warning == False:
+            warn = (self.current_value > self.warn_val)
+        else:
+            warn = (self.current_value < self.warn_val)
         change = (self.old_current_value != self.current_value)
         self._calc()
         if (change == True) or (self.first == True):
@@ -341,7 +344,7 @@ while not done:
     screen.fill((0,0,0))
     water_temperature_gauge.draw(screen,400,0)
     oil_temperature_gauge.draw(screen,0,0)
-    fuel_pressure_gauge.draw(screen,600,0)
+    fuel_pressure_gauge.draw(screen,600,0, True)
     air_flow_gauge.draw(screen,500,200)
     # Swap buffer
     pygame.display.flip()
