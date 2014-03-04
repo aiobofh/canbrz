@@ -5,6 +5,8 @@
 # engine. It will also contain a gear shift inidcator and a krellm-like
 # diagram over throttle control.
 #
+# git clone git://git.code.sf.net/p/pyobd2/code pyobd2-code
+#
 
 import serial
 import pygame
@@ -20,45 +22,61 @@ class OBD:
     def __init__(self, tty_name):
         self.dongle = serial.Serial()
         self.dongle.port = tty_name
+        self.dongle.timeout = 0.001
+        if not tty_name.startswith('/dev/pts'):
+            printf("Setting baud-rate")
+            self.dongle.baudrate = 38400
         self.dongle.open()
         self.dongle.flushInput()
         self.dongle.flushOutput()
 
+    def __exit__(self, type, value, traceback):
+        self.dongle.close()
+
+    def _send(self, string):
+        string_to_send = "%s \r" % string
+        self.dongle.write(string_to_send)
+        retval = ''
+        last = 'NO DATA'
+        while (retval != '>' and retval != 'NO DATA'):
+            if retval != string and retval != '':
+                last = retval
+            retval = self.dongle.readline().rstrip() # Echo
+        return last
+
     def engine_coolant_temperature(self):
-        self.dongle.write("01 05\n")
-        retval = self.dongle.readline() # Echo
-        retval = self.dongle.readline() # New Line
-        retval = self.dongle.readline() # Something
-        retval = self.dongle.readline() # The value
-        (foo,bar,val) = retval.split(" ")
-        return int(val, 16)-40
+        s = self._send("01 05")
+        value = 0
+        if s != 'NO DATA':
+            print(s)
+            value = int(s.split(" ")[2], 16)
+        return value - 40
 
     def oil_temperature(self):
-        self.dongle.write("21 01\n")
-        retval = self.dongle.readline() # Echo
-        retval = self.dongle.readline() # New Line
-        retval = self.dongle.readline() # Something
-        retval = self.dongle.readline() # The value
-        (foo,bar,val) = retval.split(" ")
-        return int(val, 16)-40
+        s = self._send("21 01")
+        value = 0
+        if s != 'NO DATA':
+            print(s)
+            value = int(s.split(" ")[2], 16)
+        return value - 40
 
     def fuel_pressure(self):
-        self.dongle.write("01 0A\n")
-        retval = self.dongle.readline() # Echo
-        retval = self.dongle.readline() # New Line
-        retval = self.dongle.readline() # Something
-        retval = self.dongle.readline() # The value
-        (foo,bar,val) = retval.split(" ")
-        return int(val, 16)*3.0 / 100.0
+        s = self._send("01 0A")
+        value = 0
+        if s != 'NO DATA':
+            print(s)
+            value = int(s.split(" ")[2], 16)
+        value = (value * 3.0) / 100.0
+        print("F: ", value)
+        return value * 3.0 / 100.0
 
     def air_flow(self):
-        self.dongle.write("01 10\n")
-        retval = self.dongle.readline() # Echo
-        retval = self.dongle.readline() # New Line
-        retval = self.dongle.readline() # Something
-        retval = self.dongle.readline() # The value
-        (foo,val2,val1) = retval.split(" ")
-        return (int(val1, 16)*256 + int(val2, 16)) / 100.0
+        s = self._send("01 10")
+        value = 0
+        if s != 'NO DATA':
+            print(s)
+            value = int(s.split(" ")[2], 16) * 256 + int(s.split(" ")[3], 16)
+        return value / 100.0
 
 class DemoOBD:
     def __init__(self):
@@ -292,14 +310,18 @@ while not done:
 
     if ticks == 0:
         if samples > INTRO_LENGTH * 3:
-            val = obd.engine_coolant_temperature()
-            water_temperature_gauge.set(val, SAMPLE)
-            val = obd.oil_temperature()
-            oil_temperature_gauge.set(val, SAMPLE)
-            val = obd.fuel_pressure()
-            fuel_pressure_gauge.set(val, SAMPLE)
-            val = obd.air_flow()
-            air_flow_gauge.set(val, SAMPLE)
+            # Low frequency samples
+            if samples % 8 == 0:
+                water_val = obd.engine_coolant_temperature()
+                water_temperature_gauge.set(water_val, SAMPLE)
+                oil_val = obd.oil_temperature()
+                oil_temperature_gauge.set(oil_val, SAMPLE)
+            # High frequency samples
+            fuel_val = obd.fuel_pressure()
+            fuel_pressure_gauge.set(fuel_val, SAMPLE)
+            air_val = obd.air_flow()
+            air_flow_gauge.set(air_val, SAMPLE)
+#            print("Water: %d, Oil: %d, Fuel: %d Bar, Air Flow: %d CC/Min" % water_val, oil_val, fuel_val, air_val)
         elif samples == 0:
             water_temperature_gauge.set(water_temperature_gauge.get_min(), SAMPLE * 5)
             oil_temperature_gauge.set(oil_temperature_gauge.get_min(), SAMPLE * 5)
