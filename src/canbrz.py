@@ -27,7 +27,7 @@ class OBD:
         self.dongle.timeout = 0
         self.dongle.writeTimeout = 0
         if not tty_name.startswith('/dev/pts'):
-            printf("Setting baud-rate")
+            print("Setting baud-rate")
             self.dongle.baudrate = 38400
         self.dongle.open()
         self.dongle.flushInput()
