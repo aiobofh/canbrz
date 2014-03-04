@@ -24,8 +24,8 @@ class OBD:
     def __init__(self, tty_name):
         self.dongle = serial.Serial()
         self.dongle.port = tty_name
-        self.dongle.timeout = 0
-        self.dongle.writeTimeout = 0
+        self.dongle.timeout = 0.05
+        self.dongle.writeTimeout = 1
         if not tty_name.startswith('/dev/pts'):
             print("Setting baud-rate")
             self.dongle.baudrate = 38400
@@ -39,50 +39,62 @@ class OBD:
     def _send(self, string):
         self.dongle.flushInput()
         self.dongle.flushOutput()
+        print("-> %s" % string)
         string_to_send = "%s \n" % string
         self.dongle.write(string_to_send)
-        self.dongle.flushInput()
-        self.dongle.flushOutput()
         retval = ''
         last = 'NO DATA'
         while (retval != '>' and retval != 'NO DATA'):
-            if retval != string and retval != '':
+            if retval != string and retval != '' and retval != 'OK':
+                print("== %s" % retval)
                 last = retval
             retval = self.dongle.readline().rstrip() # Echo
+        print("<- %s" % last)
+
         self.dongle.flushInput()
         self.dongle.flushOutput()
+
         return last
 
+    def reset(self):
+        print("Reset:")
+        self._send("ATZ")
+        self._send("ATE0")
+        self._send("AT SP 0")
+        self._send("0100")
+        done = True
+
+
     def engine_coolant_temperature(self):
+        print("Engine coolant temperature:")
         s = self._send("01 05")
         value = 0
         if s != 'NO DATA':
-            print(s)
             value = int(s.split(" ")[2], 16)
         return value - 40
 
     def oil_temperature(self):
+        print("Oil temperature:")
         s = self._send("21 01")
         value = 0
         if s != 'NO DATA':
-            print(s)
             value = int(s.split(" ")[2], 16)
         return value - 40
 
     def fuel_pressure(self):
+        print("Fuel pressure:")
         s = self._send("01 0A")
         value = 0
         if s != 'NO DATA':
-            print(s)
             value = int(s.split(" ")[2], 16)
         value = (value * 3.0) / 100.0
         return value * 3.0 / 100.0
 
     def air_flow(self):
+        print("Air flow:")
         s = self._send("01 10")
         value = 0
         if s != 'NO DATA':
-            print(s)
             value = int(s.split(" ")[2], 16) * 256 + int(s.split(" ")[3], 16)
         return value / 100.0
 
@@ -301,6 +313,7 @@ if sys.argv[1] == "demo":
     obd = DemoOBD()
 else:
     obd = OBD(sys.argv[1])
+    obd.reset()
 
 # Update graphics
 screen.fill((0,0,0))
@@ -311,15 +324,16 @@ samples = 0
 def read_from_port():
     while done == False:
         if samples > INTRO_LENGTH * 3:
-            water_val = obd.engine_coolant_temperature()
-            oil_val = obd.oil_temperature()
+            if samples % 8 == 0:
+                water_val = obd.engine_coolant_temperature()
+                oil_val = obd.oil_temperature()
+                water_temperature_gauge.set(water_val, SAMPLE)
+                oil_temperature_gauge.set(oil_val, SAMPLE)
             fuel_val = obd.fuel_pressure()
             air_val = obd.air_flow()
-            water_temperature_gauge.set(water_val, SAMPLE)
-            oil_temperature_gauge.set(oil_val, SAMPLE)
             fuel_pressure_gauge.set(fuel_val, SAMPLE)
             air_flow_gauge.set(air_val, SAMPLE)
-            time.sleep(0.5)
+#            time.sleep(0.001)
 
 thread = threading.Thread(target=read_from_port)
 
