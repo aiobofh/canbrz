@@ -350,13 +350,13 @@ while done == False:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
-            time.sleep(3)
+            time.sleep(0.5)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             done = True
-            time.sleep(3)
+            time.sleep(0.5)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_q:
             done = True
-            time.sleep(3)
+            time.sleep(0.5)
         if event.type is pygame.KEYDOWN and event.key == pygame.K_f:
             pygame.display.toggle_fullscreen()
 
