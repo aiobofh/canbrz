@@ -245,15 +245,22 @@ class CircularGauge:
         if self.ticks > 10:
             self.ticks = 0
 
-if len(sys.argv) != 2:
-    print "canbrz <serial tty>"
+if len(sys.argv) != 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+    print "USAGE: canbrz [-h] <serial tty>"
     print ""
-    print "To simulate run 'obdsim -g Random -s 42 -g gui_fltk' and give the"
-    print "pts-device outputed from obdsim to the canbrz"
+    print " -h, --help    Show this help text."
     print ""
-    print "If you just wnat to check out the program enter 'demo' as serial"
+    print " serial tty    The device to use as serial tty for samlpling ODB."
+    print ""
+    print "To simulate run 'obdsim -g gui_fltk' and give the"
+    print "pts-device outputed from obdsim as serial tty to canbrz."
+    print ""
+    print "If you just want to check out the program enter 'demo' as serial"
     print "tty and you don't have to set-up a serial interface."
-    exit(1)
+    print ""
+    if not sys.argv[1] == '-h' and not sys.argv[1] == '--help':
+        exit(1)
+    exit(0)
 
 pygame.init()
 # Drawing area
