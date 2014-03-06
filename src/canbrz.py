@@ -21,14 +21,14 @@ REFRESH=50
 INTRO_LENGTH=5
 
 class OBD:
-    def __init__(self, tty_name):
+    def __init__(self, tty_name, baudrate=None):
         self.dongle = serial.Serial()
         self.dongle.port = tty_name
         self.dongle.timeout = 0.05
         self.dongle.writeTimeout = 1
-        if not tty_name.startswith('/dev/pts'):
+        if not tty_name.startswith('/dev/pts') and not baudrate is None and baudrate != '':
             print("Setting baud-rate")
-            self.dongle.baudrate = 38400
+            self.dongle.baudrate = int(baudrate)
         self.dongle.open()
         self.dongle.flushInput()
         self.dongle.flushOutput()
@@ -57,8 +57,12 @@ class OBD:
         return last
 
     def reset(self):
+        print("Trying to find the correct baud-rate:")
         print("Reset:")
-        self._send("ATZ")
+        if self._send("ATZ") == '?':
+            self.dongle.close()
+            print("Wrong baud-rate? Try one of these: 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200")
+            exit(1)
         self._send("ATE0")
         self._send("AT SP 0")
         self._send("0100")
@@ -245,12 +249,13 @@ class CircularGauge:
         if self.ticks > 10:
             self.ticks = 0
 
-if len(sys.argv) != 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
-    print "USAGE: canbrz [-h] <serial tty>"
+if len(sys.argv) < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+    print "USAGE: canbrz [-h] <serial tty> [baudrate]"
     print ""
     print " -h, --help    Show this help text."
     print ""
     print " serial tty    The device to use as serial tty for samlpling ODB."
+    print " baudrate      One of these? 9600, 14400, 19200, 28800, 38400, 57600, 115200"
     print ""
     print "To simulate run 'obdsim -g gui_fltk' and give the"
     print "pts-device outputed from obdsim as serial tty to canbrz."
@@ -319,7 +324,10 @@ clock = pygame.time.Clock()
 if sys.argv[1] == "demo":
     obd = DemoOBD()
 else:
-    obd = OBD(sys.argv[1])
+    if len(sys.argv) == 3:
+        obd = OBD(sys.argv[1], sys.argv[2])
+    else:
+        obd = OBD(sys.argv[1])
     obd.reset()
 
 # Update graphics
@@ -340,7 +348,7 @@ def read_from_port():
             air_val = obd.air_flow()
             fuel_pressure_gauge.set(fuel_val, SAMPLE)
             air_flow_gauge.set(air_val, SAMPLE)
-#            time.sleep(0.001)
+            time.sleep(0.001)
 
 thread = threading.Thread(target=read_from_port)
 
