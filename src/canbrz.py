@@ -67,10 +67,13 @@ class OBD:
 
         time.sleep(2)
 
-        print("Connecting:")
-        if "SUCCESS" in self._send(''):
+        self.dongle.flushInput()
+        self.dongle.flushOutput()
+
+#        print("Connecting:")
+#        if "SUCCESS" in self._send(''):
 #            self.dongle.close()
-            print("ERROR: Incompatible dongle.")
+#            print("ERROR: Incompatible dongle.")
 #            exit(1)
 
         print("Reseting dongle:")
