@@ -29,26 +29,29 @@ class OBD:
         if not tty_name.startswith('/dev/pts') and not baudrate is None and baudrate != '':
             print("Setting baud-rate")
             self.dongle.baudrate = int(baudrate)
-        self.dongle.open()
-        self.dongle.flushInput()
-        self.dongle.flushOutput()
 
     def __exit__(self, type, value, traceback):
         self.dongle.close()
 
     def _send(self, string):
-        self.dongle.flushInput()
-        self.dongle.flushOutput()
-        print("-> %s" % string)
-        string_to_send = "%s \n" % string
-        self.dongle.write(string_to_send)
+        if string != '':
+            print("-> %s" % string)
+            string_to_send = "%s\r" % string
+            self.dongle.write(string_to_send)
         retval = ''
-        last = 'NO DATA'
-        while (retval != '>' and retval != 'NO DATA'):
-            if retval != string and retval != '' and retval != 'OK':
+        last = ''
+        prompt = False
+        while (prompt == False):
+            if retval != '':
                 print("== %s" % retval)
                 last = retval
-            retval = self.dongle.readline().rstrip() # Echo
+            retval = self.dongle.readline().rstrip().lstrip() # Echo
+            if '>' in retval and "SEARCHING" not in retval:
+                prompt = True
+            retval = retval.replace('>', '').rstrip().lstrip()
+            if last == '':
+                last = retval
+
         print("<- %s" % last)
 
         self.dongle.flushInput()
@@ -57,50 +60,77 @@ class OBD:
         return last
 
     def reset(self):
-        print("Trying to find the correct baud-rate:")
-        print("Reset:")
-        if self._send("ATZ") == '?':
+        self.dongle.open()
+
+        time.sleep(2)
+
+        print("Connecting:")
+        if "SUCCESS" in self._send(''):
             self.dongle.close()
-            print("Wrong baud-rate? Try one of these: 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200")
+            print("ERROR: Incompatible dongle.")
             exit(1)
-        self._send("ATE0")
-        self._send("AT SP 0")
-        self._send("0100")
+
+        print("Reseting dongle:")
+
+        if not "ELM327" in self._send("atz"):
+            self.dongle.close()
+            print("ERROR: Unable to communicate with dongle.")
+            exit(1)
+
+        print("Turning off local echo:")
+
+        if not "OK" in self._send("ate0"):
+            self.dongle.close()
+            print("ERROR: Unalbe to turn off local echo.")
+            exit(1)
+
+        print("Setting protocol 0")
+
+        self._send("at sp 0")
+
+        print("Connecting to ECU")
+
+        while "41 00" not in self._send("0100"):
+            print("Still waiting for ECU")
+            time.sleep(1)
+
+        print("Setup complete.")
+
         done = True
 
 
     def engine_coolant_temperature(self):
-        print("Engine coolant temperature:")
         s = self._send("01 05")
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16)
+        print("Engine coolant temperature: %d" % (value - 40))
         return value - 40
 
     def oil_temperature(self):
-        print("Oil temperature:")
         s = self._send("21 01")
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16)
+        print("Oil temperature: %d" % (value - 40))
         return value - 40
 
     def fuel_pressure(self):
-        print("Fuel pressure:")
-        s = self._send("01 0A")
+        s = self._send("01 23")
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16)
         value = (value * 3.0) / 100.0
-        return value * 3.0 / 100.0
+        print("Fuel pressure: %d" % ((value * 3.0) / 100))
+        return (value * 3.0) / 100.0
 
     def air_flow(self):
-        print("Air flow:")
         s = self._send("01 10")
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16) * 256 + int(s.split(" ")[3], 16)
-        return value / 100.0
+        print("Air flow: %d" %  (value / 30.0))
+        return value / 30.0
 
 class DemoOBD:
     def __init__(self):
