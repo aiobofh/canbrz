@@ -27,7 +27,7 @@ class OBD:
         self.dongle.timeout = 0.05
         self.dongle.writeTimeout = 1
         if not tty_name.startswith('/dev/pts') and not baudrate is None and baudrate != '':
-            print("Setting baud-rate")
+#            print("Setting baud-rate")
             self.dongle.baudrate = int(baudrate)
 
     def __exit__(self, type, value, traceback):
@@ -35,7 +35,7 @@ class OBD:
 
     def _send(self, string):
         if string != '':
-            print("-> %s" % string)
+ #           print("-> %s" % string)
             string_to_send = "%s\r" % string
             self.dongle.write(string_to_send)
         retval = ''
@@ -43,7 +43,7 @@ class OBD:
         prompt = False
         while (prompt == False):
             if retval != '':
-                print("== %s" % retval)
+ #               print("== %s" % retval)
                 last = retval
             retval = self.dongle.readline().rstrip().lstrip() # Echo
             if '>' in retval and "SEARCHING" not in retval:
@@ -52,7 +52,7 @@ class OBD:
             if last == '':
                 last = retval
 
-        print("<- %s" % last)
+ #       print("<- %s" % last)
 
         self.dongle.flushInput()
         self.dongle.flushOutput()
@@ -110,7 +110,7 @@ class OBD:
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16)
-        print("Engine coolant temperature: %d" % (value - 40))
+#        print("Engine coolant temperature: %d" % (value - 40))
         return value - 40
 
 #    def oil_temperature(self):
@@ -126,7 +126,7 @@ class OBD:
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[3], 16)
-        print("Fuel pressure: %d" % (value * 14 / 100))
+#        print("Fuel pressure: %d" % (value * 14 / 100))
         return (value * 14.0) / 100.0
 
     def air_flow(self):
@@ -134,7 +134,7 @@ class OBD:
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16) * 256 + int(s.split(" ")[3], 16)
-        print("Air flow: %d" %  (value / 100.0))
+#        print("Air flow: %d" %  (value / 100.0))
         return value / 100.0
 
 class DemoOBD:
@@ -359,7 +359,7 @@ clock = pygame.time.Clock()
 if sys.argv[1] == "demo":
     obd = DemoOBD()
 else:
-    if len(sys.argv) == 3:
+    if len(sys.argv) > 2:
         obd = OBD(sys.argv[1], sys.argv[2])
     else:
         obd = OBD(sys.argv[1])
@@ -370,6 +370,7 @@ screen.fill((0,0,0))
 samples = 0
 ticks = 0
 samples = 0
+pygame.display.toggle_fullscreen()
 
 def read_from_port():
     while done == False:
