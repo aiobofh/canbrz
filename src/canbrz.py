@@ -62,13 +62,16 @@ class OBD:
     def reset(self):
         self.dongle.open()
 
+        self.dongle.flushInput()
+        self.dongle.flushOutput()
+
         time.sleep(2)
 
         print("Connecting:")
         if "SUCCESS" in self._send(''):
-            self.dongle.close()
+#            self.dongle.close()
             print("ERROR: Incompatible dongle.")
-            exit(1)
+#            exit(1)
 
         print("Reseting dongle:")
 
@@ -107,30 +110,29 @@ class OBD:
         print("Engine coolant temperature: %d" % (value - 40))
         return value - 40
 
-    def oil_temperature(self):
-        s = self._send("21 01")
-        value = 0
-        if s != 'NO DATA':
-            value = int(s.split(" ")[2], 16)
-        print("Oil temperature: %d" % (value - 40))
-        return value - 40
+#    def oil_temperature(self):
+#        s = self._send("21 01")
+#        value = 0
+#        if s != 'NO DATA':
+#            value = int(s.split(" ")[3], 16)
+#        print("Oil temperature: %d" % (value - 40))
+#        return value - 40
 
     def fuel_pressure(self):
         s = self._send("01 23")
         value = 0
         if s != 'NO DATA':
-            value = int(s.split(" ")[2], 16)
-        value = (value * 3.0) / 100.0
-        print("Fuel pressure: %d" % ((value * 3.0) / 100))
-        return (value * 3.0) / 100.0
+            value = int(s.split(" ")[3], 16)
+        print("Fuel pressure: %d" % (value * 14 / 100))
+        return (value * 14.0) / 100.0
 
     def air_flow(self):
         s = self._send("01 10")
         value = 0
         if s != 'NO DATA':
             value = int(s.split(" ")[2], 16) * 256 + int(s.split(" ")[3], 16)
-        print("Air flow: %d" %  (value / 30.0))
-        return value / 30.0
+        print("Air flow: %d" %  (value / 100.0))
+        return value / 100.0
 
 class DemoOBD:
     def __init__(self):
@@ -141,9 +143,9 @@ class DemoOBD:
         self.value += randint(-1,1) / 5.0
         return self.value
 
-    def oil_temperature(self):
-        self.value += randint(-1,1) / 5.0
-        return self.value
+#    def oil_temperature(self):
+#        self.value += randint(-1,1) / 5.0
+#        return self.value
 
     def fuel_pressure(self):
         self.fuel_pressure_value += randint(-1,1) / 50.0
@@ -305,18 +307,8 @@ screen = pygame.display.set_mode(size)
 pygame.display.set_caption("CanBRZ")
 
 
-water_temperature_gauge = CircularGauge(normal_image="../graphics/water_normal_small.png",
-                                        warning_image="../graphics/water_warning_small.png",
-                                        inner_needle_radius=22,
-                                        outer_needle_radius=90,
-                                        min_val=40,
-                                        max_val=140,
-                                        warn_val=120,
-                                        min_val_degrees=269,
-                                        max_val_degrees=0,
-                                        needle_color=(200,0,0))
-oil_temperature_gauge = CircularGauge(normal_image="../graphics/oil_normal_big.png",
-                                      warning_image="../graphics/oil_warning_big.png",
+water_temperature_gauge = CircularGauge(normal_image="../graphics/water_normal_big.png",
+                                        warning_image="../graphics/water_warning_big.png",
                                       inner_needle_radius=45,
                                       outer_needle_radius=185,
                                       min_val=40,
@@ -324,14 +316,24 @@ oil_temperature_gauge = CircularGauge(normal_image="../graphics/oil_normal_big.p
                                       warn_val=120,
                                       min_val_degrees=269,
                                       max_val_degrees=0,
-                                      needle_color=(200,0,0))
+                                        needle_color=(200,0,0))
+#oil_temperature_gauge = CircularGauge(normal_image="../graphics/oil_normal_big.png",
+#                                      warning_image="../graphics/oil_warning_big.png",
+#                                      inner_needle_radius=45,
+#                                      outer_needle_radius=185,
+#                                      min_val=40,
+#                                      max_val=140,
+#                                      warn_val=120,
+#                                      min_val_degrees=269,
+#                                      max_val_degrees=0,
+#                                      needle_color=(200,0,0))
 fuel_pressure_gauge = CircularGauge(normal_image="../graphics/fuel_pressure_normal_small.png",
                                     warning_image="../graphics/fuel_pressure_warning_small.png",
                                     inner_needle_radius=22,
                                     outer_needle_radius=90,
                                     min_val=0,
                                     max_val=5,
-                                    warn_val=1,
+                                    warn_val=0.2,
                                     min_val_degrees=269,
                                     max_val_degrees=0,
                                     needle_color=(200,0,0))
@@ -340,7 +342,7 @@ air_flow_gauge = CircularGauge(normal_image="../graphics/air_flow_normal_small.p
                                inner_needle_radius=22,
                                outer_needle_radius=90,
                                min_val=0,
-                               max_val=500,
+                               max_val=100,
                                warn_val=1,
                                min_val_degrees=269,
                                max_val_degrees=0,
@@ -371,9 +373,9 @@ def read_from_port():
         if samples > INTRO_LENGTH * 3:
             if samples % 8 == 0:
                 water_val = obd.engine_coolant_temperature()
-                oil_val = obd.oil_temperature()
+#                oil_val = obd.oil_temperature()
                 water_temperature_gauge.set(water_val, SAMPLE)
-                oil_temperature_gauge.set(oil_val, SAMPLE)
+#                oil_temperature_gauge.set(oil_val, SAMPLE)
             fuel_val = obd.fuel_pressure()
             air_val = obd.air_flow()
             fuel_pressure_gauge.set(fuel_val, SAMPLE)
@@ -402,29 +404,29 @@ while done == False:
         if samples == 0:
             water_temperature_gauge.set(water_temperature_gauge.get_min(),
                                         SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
-                                      SAMPLE * 5)
+#            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
+#                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
         elif samples == INTRO_LENGTH:
             water_temperature_gauge.set(water_temperature_gauge.get_max(),
                                         SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_max(),
-                                      SAMPLE * 5)
+#            oil_temperature_gauge.set(oil_temperature_gauge.get_max(),
+#                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_max(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_max(), SAMPLE * 5)
         elif samples == INTRO_LENGTH * 2:
             water_temperature_gauge.set(water_temperature_gauge.get_min(),
                                         SAMPLE * 5)
-            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
-                                      SAMPLE * 5)
+#            oil_temperature_gauge.set(oil_temperature_gauge.get_min(),
+#                                      SAMPLE * 5)
             fuel_pressure_gauge.set(fuel_pressure_gauge.get_min(), SAMPLE * 5)
             air_flow_gauge.set(air_flow_gauge.get_min(), SAMPLE * 5)
             thread.start()
 
     screen.fill((0,0,0))
-    water_temperature_gauge.draw(screen,400,0)
-    oil_temperature_gauge.draw(screen,0,0)
+    water_temperature_gauge.draw(screen,0,0)
+#    oil_temperature_gauge.draw(screen,0,0)
     fuel_pressure_gauge.draw(screen,600,0, True)
     air_flow_gauge.draw(screen,500,200)
     # Swap buffer
