@@ -307,6 +307,8 @@ pygame.init()
 size = (800,480)
 screen = pygame.display.set_mode(size)
 
+pygame.mouse.set_visible(False)
+
 pygame.display.set_caption("CanBRZ")
 
 
